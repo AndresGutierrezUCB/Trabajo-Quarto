@@ -1,0 +1,156 @@
+---
+title: "BD SALES"
+author: "Andres Gutierrez"
+date: "24/jun/2024"
+bibliography: references.bib
+format:
+  html:
+    toc: FALSE
+    #echo: False
+jupyter: python3
+---
+***Introducción***
+
+Este es el reporte final para el modulo de Python 
+
+***Referencias***
+
+###Bibtex: @BD_SALES
+
+
+```{python}
+
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import pandas as pd
+from IPython.display import display
+import plotly.express as px
+
+# Leer el archivo CSV
+df = pd.read_csv('BD SALES.csv')
+
+# Mostrar las primeras filas del dataframe
+print("Primeras filas del DataFrame:")
+display(df.head())
+
+# Suponiendo que tienes una columna 'Product' y una columna 'Sales' que contiene las ventas
+# Agrupar por producto y sumar las ventas
+ventas_por_producto = df.groupby('Product')['Price'].sum().reset_index()
+
+# Crear el gráfico de barras
+plt.figure(figsize=(10, 6))
+plt.bar(ventas_por_producto['Product'], ventas_por_producto['Price'], color='skyblue')
+
+# Etiquetas y título
+plt.title('Ventas de Productos')
+plt.xlabel('Producto')
+plt.ylabel('Ventas')
+
+# Rotar las etiquetas del eje x para que sean legibles
+plt.xticks(rotation=45)
+plt.tight_layout()
+
+# Mostrar el gráfico
+plt.show()
+
+```
+
+
+Infererimos que hay ciudades donde se encuentran productos mucho mas propoensos a ser comprados, como en el caso de Los angeles y productos de escritorio con una coreelacion de 0.05 y por otra parte San antoio y Laptop con una correlacion de 0.10
+
+
+```{python}
+import seaborn as sns
+df2 = df.copy()
+# Convertir las variables categóricas en variables numéricas utilizando one-hot encoding
+df_encoded = pd.get_dummies(df2[['City', 'Product']], columns=['City', 'Product'])
+
+# Calcular la matriz de correlación
+correlation_matrix = df_encoded.corr()
+
+# Mostrar la matriz de correlación
+#print(correlation_matrix)
+
+# Crear un heatmap utilizando seaborn para visualizar la matriz de correlación
+plt.figure(figsize=(16, 12))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+plt.title('Matriz de Correlación entre Producto y Ciudad')
+plt.show()
+
+```
+
+
+
+```{python}
+df3 = df2.copy()
+# Convertir la columna de fechas a tipo datetime
+df3['PurchaseDate'] = pd.to_datetime(df3['PurchaseDate'])
+
+
+# Convertir la columna de fechas a tipo datetime
+df3['PurchaseDate'] = pd.to_datetime(df3['PurchaseDate'])
+
+# Agregar una columna de contador para contar las ventas por CustomerID
+df3['Quantity'] = df3.groupby('CustomerID')['CustomerID'].transform('size')
+
+# Escalar la característica 'cantidad' para el clustering
+scaler = StandardScaler()
+cantidad_scaled = scaler.fit_transform(df3['Quantity'].values.reshape(-1, 1))
+
+# Definir el modelo de clustering
+kmeans = KMeans(n_clusters=3, random_state=0)
+
+# Ajustar el modelo con los datos escalados
+kmeans.fit(cantidad_scaled)
+
+# Obtener las etiquetas de cluster asignadas a cada cliente
+labels = kmeans.labels_
+
+# Agregar las etiquetas al DataFrame df3
+df3['Cluster'] = labels
+
+# Crear un histograma interactivo con plotly
+fig = px.histogram(df3, x='Quantity', color='Cluster', barmode='overlay',
+                   title='Histograma Interactivo de Cantidad Total de Ventas por Cliente',
+                   labels={'Quantity': 'Cantidad Total de Ventas'})
+fig.update_layout(bargap=0.1)
+fig.show()
+
+```
+
+
+
+```{python}
+df4 = df3.copy()
+
+# Agregar una columna de contador para contar las ventas por CustomerID
+df4['Quantity'] = df4.groupby('CustomerID')['CustomerID'].transform('size')
+
+# Calcular estadísticas descriptivas
+stats = df4['Quantity'].describe()
+
+# Crear un boxplot de la cantidad de ventas por CustomerID
+plt.figure(figsize=(10, 6))
+plt.boxplot(df4['Quantity'], vert=False)
+
+# Agregar líneas para Q1, mediana y Q3
+plt.axvline(stats['25%'], color='yellow', linestyle='--', linewidth=2, label='Q1 (25%)')
+plt.axvline(stats['50%'], color='red', linestyle='--', linewidth=2, label='Mediana (50%)')
+plt.axvline(stats['75%'], color='blue', linestyle='--', linewidth=2, label='Q3 (75%)')
+
+# Etiquetas y título
+plt.xlabel('Cantidad de Ventas')
+plt.ylabel('ID de Cliente')
+plt.title('Distribución de la Cantidad de Ventas por ID de Cliente')
+plt.grid(True)
+plt.legend()
+
+# Mostrar estadísticas clave
+plt.text(stats['50%'], 1.05, f'Mediana: {stats["50%"]:.2f}', color='red', verticalalignment='center', horizontalalignment='left')
+plt.text(stats['25%'], 1.05, f'Q1: {stats["25%"]:.2f}', color='yellow', verticalalignment='center', horizontalalignment='left')
+plt.text(stats['75%'], 1.05, f'Q3: {stats["75%"]:.2f}', color='blue', verticalalignment='center', horizontalalignment='left')
+
+plt.tight_layout()
+plt.show()
+```
